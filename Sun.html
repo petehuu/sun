@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sunlight Time</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/suncalc/suncalc.js"></script>
+    <!--    <script src="./geometryutil.js"  > </script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.6.2/proj4.js"></script>
+    <script src="https://unpkg.com/leaflet-geometryutil@0.10.1/src/leaflet.geometryutil.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #map {
+            width: 100%;
+            height: 80%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sunlight Time</h1>
+    <div id="map"></div>
+    <script>
+        function getHashParams() {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            return {
+                lat: parseFloat(params.get('lat')) || 60.1695,
+                lng: parseFloat(params.get('lng')) || 24.9354,
+                zoom: parseInt(params.get('zoom')) || 8,
+                markerLat: parseFloat(params.get('markerLat')),
+                markerLng: parseFloat(params.get('markerLng'))
+            };
+        }
+        function drawLines(latitude, longitude, lineLength) {
+			// Hae auringon sijainti
+			const sunPosition = SunCalc.getPosition(new Date(), latitude, longitude);
+
+			// Muunna auringon atsimuutti radiaaneista asteiksi ja käännä se pohjoisesta myötäpäivään
+			const leafletAzimuth = (sunPosition.azimuth * 180 / Math.PI + 180) % 360;
+			
+			lineLayerGroup.clearLayers();
+
+			try {
+				const markerLatLng = L.GeometryUtil.destination(
+					L.latLng(latitude, longitude),
+					leafletAzimuth,
+					lineLength
+				);
+
+				// Piirrä punainen viiva
+				const redLine = L.polyline([
+					L.latLng(latitude, longitude),
+					markerLatLng
+				], {
+					color: 'red',
+					weight: 5
+				}).addTo(map);
+				redLine.addTo(lineLayerGroup);
+
+				// Hae auringonnousun ja auringonlaskun ajat
+				const times = SunCalc.getTimes(new Date(), latitude, longitude);
+				const sunriseTime = times.sunrise;
+				const sunsetTime = times.sunset;
+
+				// Laske auringonnousun ja auringonlaskun atsimuutit
+				const sunrisePosition = SunCalc.getPosition(sunriseTime, latitude, longitude);
+				const sunsetPosition = SunCalc.getPosition(sunsetTime, latitude, longitude);
+				// Muunna auringonnousun ja auringonlaskun atsimuutit radiaaneista asteiksi ja käännä ne pohjoisesta myötäpäivään
+				const sunriseAzimuth = (sunrisePosition.azimuth * 180 / Math.PI + 180) % 360;
+				const sunsetAzimuth = (sunsetPosition.azimuth * 180 / Math.PI + 180) % 360;
+
+				// Laske viivojen päätepisteet
+				const sunriseLatLng = L.GeometryUtil.destination(
+					L.latLng(latitude, longitude),
+					sunriseAzimuth,
+					lineLength
+				);
+				const sunsetLatLng = L.GeometryUtil.destination(
+					L.latLng(latitude, longitude),
+					sunsetAzimuth,
+					lineLength
+				);
+
+				// Piirrä viivat kartalle
+				const RiseLine = L.polyline([
+					L.latLng(latitude, longitude), // Aloituspiste
+					sunriseLatLng // Päätepiste
+				], {
+					color: 'orange', // Viivan väri
+					weight: 5 // Viivan paksuus
+				}).addTo(map);
+				RiseLine.addTo(lineLayerGroup);
+				const SetLine = L.polyline([
+					L.latLng(latitude, longitude), // Aloituspiste
+					sunsetLatLng // Päätepiste
+				], {
+					color: 'orange', // Viivan väri
+					weight: 5 // Viivan paksuus
+				}).addTo(map);
+				SetLine.addTo(lineLayerGroup);
+
+			} catch (error) {
+				console.error('Virhe L.GeometryUtil.destination() -funktion kutsussa:', error);
+			}
+		}
+
+        const { lat, lng, zoom, markerLat, markerLng } = getHashParams();
+
+        let map = L.map('map').setView([lat, lng], zoom);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+		const zoomLevel = map.getZoom();
+		const scale = map.getScaleZoom(zoomLevel);
+		const lineLength = 50000 / scale; // Viivan pituus pikseleinä
+		const lineLayerGroup = L.layerGroup().addTo(map);
+
+        let marker;
+        if (markerLat && markerLng) {
+            marker = L.marker([markerLat, markerLng]).addTo(map);
+            // Piirrä viivat
+			drawLines(markerLat, markerLng, lineLength);
+            fetchElevationAndUpdatePopup(markerLat, markerLng, marker);
+        }
+
+        map.on('moveend', function() {
+            updateHash();
+        });
+		
+		document.addEventListener('DOMContentLoaded', function() {
+			map.on('click', async function(event) {
+				const latitude = event.latlng.lat;
+				const longitude = event.latlng.lng;
+				
+				// Piirrä viivat
+				drawLines(latitude, longitude, lineLength);
+
+
+				
+				if (marker) {
+					map.removeLayer(marker);
+				}
+				marker = L.marker([latitude, longitude]).addTo(map);
+				marker.bindPopup('Fetching elevation data...').openPopup();
+				await fetchElevationAndUpdatePopup(latitude, longitude, marker);
+				updateHash();
+			});
+		});	
+        function updateHash() {
+            const center = map.getCenter();
+            const zoomLevel = map.getZoom();
+            let hash = `lat=${center.lat}&lng=${center.lng}&zoom=${zoomLevel}`;
+            if (marker) {
+                const markerPos = marker.getLatLng();
+                hash += `&markerLat=${markerPos.lat}&markerLng=${markerPos.lng}`;
+            }
+            window.location.hash = hash;
+        }
+
+		async function fetchElevationAndUpdatePopup(lat, lng, marker) {
+			try {
+				const locationResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+				if (!locationResponse.ok) {
+					throw new Error(`Location API request failed: ${locationResponse.statusText}`);
+				}
+				const locationData = await locationResponse.json();
+				if (!locationData.display_name) {
+					throw new Error('Location data is missing.');
+				}
+				const locationName = locationData.display_name;
+			
+				proj4.defs([
+				  ['EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs'],
+				  ['EPSG:3067', '+proj=utm +zone=35 +ellps=GRS80 +units=m +no_defs']
+				]);
+				// Coordinates in WGS84
+				var wgs84Coord = [lng, lat];
+
+				// Convert to ETRS-TM35FIN
+				var etrsCoord =  proj4('EPSG:4326', 'EPSG:3067', wgs84Coord);
+				console.log('ETRS-TM35FIN Coordinates:', etrsCoord);
+				
+				const east = Math.floor(etrsCoord[0]); // Ensure correct E format
+				const north = Math.floor(etrsCoord[1]); // Use original N value
+
+				const eastLower = (Number(east) - 0).toString().padStart(6, '0');
+				const eastUpper = (Number(east) + 4).toString().padStart(6, '0');
+				const northLower = (Number(north) - 0).toString().padStart(7, '0').slice(-7);
+				const northUpper = (Number(north) + 4).toString().padStart(7, '0').slice(-7);
+
+				const elevation = await fetchElevation(eastLower, eastUpper, northLower, northUpper);
+
+				const popupContent = `Location: ${locationName}<br>Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>Elevation: ${elevation} meters`;
+				marker.bindPopup(popupContent).openPopup();
+			} catch (error) {
+				console.error('Error fetching data:', error);
+				marker.bindPopup(`Error fetching data: ${error.message}`).openPopup();
+			}
+		}
+
+		async function fetchElevation(eastLower, eastUpper, northLower, northUpper) {
+			const proxyUrl = window.location.hostname === 'localhost' ? 'http://localhost:8173/' : ''; // Käytä proxyä vain localhost:ssa
+			const elevationUrl = `https://avoin-karttakuva.maanmittauslaitos.fi/ortokuvat-ja-korkeusmallit/wcs/v2?api-key=7cd2ddae-9f2e-481c-99d0-404e7bc7a0b2&service=WCS&version=2.0.1&request=GetCoverage&CoverageID=korkeusmalli_2m&SUBSET=E(${eastLower},${eastUpper})&SUBSET=N(${northLower},${northUpper})&format=text/plain`;
+			console.log(`Fetching elevation data from proxyUrl: ${proxyUrl}`);
+			console.log(`Fetching elevation data from URL: ${proxyUrl}${elevationUrl}`);
+			//const response = await fetch(`${proxyUrl}${elevationUrl}`);
+			const response = await fetch(`${elevationUrl}`);
+			if (!response.ok) {
+				throw new Error(`Elevation API request failed: ${response.statusText}`);
+			}
+			const data = await response.text();
+			console.log(`Got elevation data : ${data}`);
+			const lines = data.split("\n");
+			const height = parseFloat(lines[6]).toFixed(2);
+			return parseFloat(height);
+		}
+
+
+    </script>
+</body>
+</html>
