@@ -46,7 +46,9 @@
 			const sunPosition = SunCalc.getPosition(new Date(), latitude, longitude);
 
 			// Muunna auringon atsimuutti radiaaneista asteiksi ja käännä se pohjoisesta myötäpäivään
-			const leafletAzimuth = (sunPosition.azimuth * 180 / Math.PI + 180) % 360;
+			const leafletAzimuth = (sunPosition.azimuth  * 180 / Math.PI + 180) % 360;
+			const sunAltitude    = sunPosition.altitude  * 180 / Math.PI;
+			console.log("Sun Azimuth=" + leafletAzimuth + " Altitude=" + sunAltitude);
 			
 			lineLayerGroup.clearLayers();
 
@@ -108,7 +110,72 @@
 					weight: 5 // Viivan paksuus
 				}).addTo(map);
 				SetLine.addTo(lineLayerGroup);
+				
+				  // Hae kuun sijainti
+				  const moonPosition = SunCalc.getMoonPosition(new Date(), latitude, longitude);
+				  // Muunna kuun atsimuutti radiaaneista asteiksi ja käännä se pohjoisesta myötäpäivään
+				  const moonAzimuth = (moonPosition.azimuth * 180 / Math.PI + 180) % 360;
+				  var moonAltitude  = moonPosition.altitude * 180 / Math.PI;
+				  console.log("Moon Azimuth=" + moonAzimuth + " Altitude=" + moonAltitude);
+				  // Laske viivan päätepisteet
+				  const moonLatLng = L.GeometryUtil.destination(
+					L.latLng(latitude, longitude),
+					moonAzimuth,
+					lineLength
+				  );
+				  // Piirrä viiva kartalle
+				  const moonLine = L.polyline([
+					L.latLng(latitude, longitude), // Aloituspiste
+					moonLatLng // Päätepiste
+				  ], {
+					color: 'blue', // Viivan väri
+					weight: 5 // Viivan paksuus
+				  }).addTo(map);
+				  moonLine.addTo(lineLayerGroup);
 
+				  var Moon_times = SunCalc.getMoonTimes(new Date(), latitude, longitude);
+				  console.log("Moonrise=" + Moon_times.rise);  
+				  var Moonrise_pos = SunCalc.getMoonPosition(Moon_times.rise, latitude, longitude);
+				  var moonriseAzimuth = Moonrise_pos.azimuth * 180 / Math.PI + 180;
+				  var moonriseAltitude = Moonrise_pos.altitude * 180 / Math.PI;
+				  console.log("Moonrise Azimuth=" + moonriseAzimuth + " Altitude=" + moonriseAltitude);
+				  console.log("Moonset=" + Moon_times.set); 
+				  var Moonset_pos = SunCalc.getMoonPosition(Moon_times.set, latitude, longitude);
+				  var moonsetAzimuth = Moonset_pos.azimuth * 180 / Math.PI + 180;
+				  var moonsetAltitude = Moonset_pos.altitude * 180 / Math.PI;
+				  console.log("Moonset Azimuth=" + moonsetAzimuth + " Altitude=" + moonsetAltitude);
+				  //var Moon_illum = SunCalc.getMoonIllumination(new Date('2023-01-07T00:00:00'));
+				  var Moon_illum = SunCalc.getMoonIllumination(new Date());
+				  console.log("Moon illumination=" + (100*Moon_illum.fraction).toFixed(2) + "%");
+				  console.log("Moon phase=" + Moon_illum.phase);
+				// Laske viivojen päätepisteet
+				const moonriseLatLng = L.GeometryUtil.destination(
+					L.latLng(latitude, longitude),
+					moonriseAzimuth,
+					lineLength
+				);
+				const moonsetLatLng = L.GeometryUtil.destination(
+					L.latLng(latitude, longitude),
+					moonsetAzimuth,
+					lineLength
+				);
+				// Piirrä viivat kartalle
+				const moonRiseLine = L.polyline([
+					L.latLng(latitude, longitude), // Aloituspiste
+					moonriseLatLng // Päätepiste
+				], {
+					color: 'green', // Viivan väri
+					weight: 5 // Viivan paksuus
+				}).addTo(map);
+				moonRiseLine.addTo(lineLayerGroup);
+				const moonSetLine = L.polyline([
+					L.latLng(latitude, longitude), // Aloituspiste
+					moonsetLatLng // Päätepiste
+				], {
+					color: 'green', // Viivan väri
+					weight: 5 // Viivan paksuus
+				}).addTo(map);
+				moonSetLine.addTo(lineLayerGroup);
 			} catch (error) {
 				console.error('Virhe L.GeometryUtil.destination() -funktion kutsussa:', error);
 			}
@@ -214,8 +281,7 @@
 			const elevationUrl = `https://avoin-karttakuva.maanmittauslaitos.fi/ortokuvat-ja-korkeusmallit/wcs/v2?api-key=7cd2ddae-9f2e-481c-99d0-404e7bc7a0b2&service=WCS&version=2.0.1&request=GetCoverage&CoverageID=korkeusmalli_2m&SUBSET=E(${eastLower},${eastUpper})&SUBSET=N(${northLower},${northUpper})&format=text/plain`;
 			console.log(`Fetching elevation data from proxyUrl: ${proxyUrl}`);
 			console.log(`Fetching elevation data from URL: ${proxyUrl}${elevationUrl}`);
-			//const response = await fetch(`${proxyUrl}${elevationUrl}`);
-			const response = await fetch(`${elevationUrl}`);
+			const response = await fetch(`${proxyUrl}${elevationUrl}`);
 			if (!response.ok) {
 				throw new Error(`Elevation API request failed: ${response.statusText}`);
 			}
