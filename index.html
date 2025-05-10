@@ -284,7 +284,24 @@
 
 				const elevation = await fetchElevation(eastLower, eastUpper, northLower, northUpper);
 
-				const popupContent = `Location: ${locationName}<br>Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>Elevation: ${elevation} meters`;
+				//const popupContent = `Location: ${locationName}<br>Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>Elevation: ${elevation} meters`;
+				const Sun_times = SunCalc.getTimes(new Date(), lat, lng);
+		                //const sunriseTime = Sun_times.sunrise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+		                const sunriseTime = Sun_times.sunrise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false });
+		                const sunsetTime = Sun_times.sunset.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false });
+		
+		                const Moon_times = SunCalc.getMoonTimes(new Date(), lat, lng);
+		                const moonriseTime = Moon_times.rise ? Moon_times.rise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false }) : "Ei saatavilla";
+		                const moonsetTime = Moon_times.set ? Moon_times.set.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false }) : "Ei saatavilla";
+		
+		                const popupContent = `Location: ${locationName}<br>
+		                                        Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>
+		                                        Elevation: ${elevation} meters<br>
+		                                        Sunrise: ${sunriseTime}<br>
+		                                        Sunset: ${sunsetTime}<br>
+		                                        Moonrise: ${moonriseTime}<br>
+		                                        Moonset: ${moonsetTime}`;
+				
 				marker.bindPopup(popupContent).openPopup();
 			} catch (error) {
 				console.error('Error fetching data:', error);
