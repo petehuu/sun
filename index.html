@@ -285,7 +285,8 @@
 				const elevation = await fetchElevation(eastLower, eastUpper, northLower, northUpper);
 
 				//const popupContent = `Location: ${locationName}<br>Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>Elevation: ${elevation} meters`;
-								var options = {  hour: '2-digit',  minute: '2-digit', hour12: false }
+				
+				var options = {  hour: '2-digit',  minute: '2-digit', hour12: false }
 				const Sun_times = SunCalc.getTimes(new Date(), lat, lng);
 				//const sunriseTime = Sun_times.sunrise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':');
 				const sunriseTime = Sun_times.sunrise.toLocaleTimeString('en', options);
