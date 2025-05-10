@@ -184,9 +184,24 @@
         const { lat, lng, zoom, markerLat, markerLng } = getHashParams();
 
         let map = L.map('map').setView([lat, lng], zoom);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+
+        // Tavallinen karttapohja (OpenStreetMap)
+        const baseMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map); // Lisää aloituspohjana
+
+        // Satelliittikartta (Esri World Imagery)
+        const satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri & NASA'
+        });
+
+        // Lisää kerrosten hallinta (karttapohjan vaihto)
+        const baseMaps = {
+            "Kartta": baseMap,
+            "Satelliitti": satelliteMap
+        };
+
+        L.control.layers(baseMaps).addTo(map);
 
 		const zoomLevel = map.getZoom();
 		const scale = map.getScaleZoom(zoomLevel);
@@ -200,6 +215,7 @@
 			drawLines(markerLat, markerLng, lineLength);
             fetchElevationAndUpdatePopup(markerLat, markerLng, marker);
         }
+
 
         map.on('moveend', function() {
             updateHash();
