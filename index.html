@@ -285,14 +285,16 @@
 				const elevation = await fetchElevation(eastLower, eastUpper, northLower, northUpper);
 
 				//const popupContent = `Location: ${locationName}<br>Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>Elevation: ${elevation} meters`;
+								var options = {  hour: '2-digit',  minute: '2-digit', hour12: false }
 				const Sun_times = SunCalc.getTimes(new Date(), lat, lng);
-		                //const sunriseTime = Sun_times.sunrise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':');
-		                const sunriseTime = Sun_times.sunrise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':');
-		                const sunsetTime = Sun_times.sunset.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':');
+				//const sunriseTime = Sun_times.sunrise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':');
+				const sunriseTime = Sun_times.sunrise.toLocaleTimeString('en', options);
+				const sunsetTime = Sun_times.sunset.toLocaleTimeString('en', options);
 		
-		                const Moon_times = SunCalc.getMoonTimes(new Date(), lat, lng);
-		                const moonriseTime = Moon_times.rise ? Moon_times.rise.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':') : "Ei saatavilla";
-		                const moonsetTime = Moon_times.set ? Moon_times.set.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':') : "Ei saatavilla";
+				const Moon_times = SunCalc.getMoonTimes(new Date(), lat, lng);
+				const moonriseTime = Moon_times.rise ? Moon_times.rise.toLocaleTimeString('en', options) : "Ei saatavilla";
+				const moonsetTime = Moon_times.set ? Moon_times.set.toLocaleTimeString('en', options) : "Ei saatavilla";
+
 		
 		                const popupContent = `Location: ${locationName}<br>
 		                                        Lat: ${lat.toFixed(5)}, Lon: ${lng.toFixed(5)}<br>
